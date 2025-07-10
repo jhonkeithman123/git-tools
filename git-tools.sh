@@ -26,19 +26,28 @@ case "$1" in
     dry_run=false
     confirm=false
     verbose=false
+    remote_name=""
+    override_branch=""
 
-    for arg in "$@"; do
-      case "$arg" in
+    args=()
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
         --dry-run) dry_run=true ;;
         --confirm) confirm=true ;;
         --verbose) verbose=true ;;
+        --remote-name)
+          shift
+          remote_name="$1"
+          ;;
+        --branch)
+          shift
+          override_branch="$1"
+          ;;
+        *)
+          args+=("$1")
+          ;;
       esac
-    done
-
-    #* Remove flags from args
-    args=()
-    for arg in "$@"; do
-      [[ "$arg" != "--dry-run" && "$arg" != "--confirm" && "$arg" != "--verbose" ]] && args+=("$arg")
+      shift
     done
 
     #* Ordinal suffix generator
@@ -59,20 +68,20 @@ case "$1" in
       echo "${n}${suffix}"
     }
 
-    #* Parse args and auto-generate commit message if needed
-    if [ ${#args[@]} -eq 1 ]; then
-      msg="${args[0]}"
-      remote=""
-      branch=""
-    elif [ ${#args[@]} -eq 2 ]; then
-      msg=""
-      remote="${args[0]}"
-      branch="${args[1]}"
-    elif [ ${#args[@]} -ge 3 ]; then
-      msg="${args[0]}"
-      remote="${args[1]}"
-      branch="${args[2]}"
-    fi
+    #* Flexible argument parsing
+    repo_link=""
+    new_branch=""
+    msg=""
+
+    for arg in "${args[@]}"; do
+      if [[ "$arg" =~ ^(https://|git@) ]]; then
+        repo_link="$arg"
+      elif git check-ref-format --branch "$arg" &>/dev/null; then
+        new_branch="$arg"
+      else
+        msg="$arg"
+      fi
+    done
 
     #* Auto-generate commit message if empty
     if [ -z "$msg" ]; then
@@ -85,28 +94,50 @@ case "$1" in
       fi
     fi
 
-    #* Auto-detect remote
-    if [ -z "$remote" ]; then
-      remotes=($(git remote))
-      if [ ${#remotes[@]} -eq 0 ]; then
-        echo "❌ No remotes found. Are you in a Git repo?"
-        exit 1
-      elif [ ${#remotes[@]} -gt 1 ]; then
-        echo "⚠️ Multiple remotes found: ${remotes[*]}"
-        echo "👉 Defaulting to: ${remotes[0]}"
-      fi
-      remote="${remotes[0]}"
+    #* Initialize Git repo if needed
+    if [ ! -d .git ]; then
+      echo "🧱 Initializing Git repository..."
+      git init
     fi
 
-    #* Auto-detect branch
-    if [ -z "$branch" ]; then
-      branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
-      if [ -z "$branch" ]; then
-        echo "❌ Could not detect current branch."
+    #* Auto-detect or create remote
+    remotes=($(git remote))
+    if [ ${#remotes[@]} -eq 0 ]; then
+      if [[ -n "$repo_link" ]]; then
+        if [ -z "$remote_name" ]; then
+          read -p "📛 Enter remote name [default: origin]: " remote_name
+          remote_name="${remote_name:-origin}"
+        else
+          echo "📛 Using remote name from flag: $remote_name"
+        fi
+        git remote add "$remote_name" "$repo_link"
+        remote="$remote_name"
+      else
+        echo "❌ No remote found and no repo link provided."
         exit 1
       fi
-      echo "🌿 Using current branch: $branch"
+    else
+      remote="${remotes[0]}"
+      echo "📦 Using existing remote: $remote"
     fi
+
+    #* Auto-detect or override branch
+    if [ -n "$override_branch" ]; then
+      new_branch="$override_branch"
+      echo "🌿 Using branch from flag: $new_branch"
+    elif [ -z "$new_branch" ]; then
+      new_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+      if [ -z "$new_branch" ] || [ "$new_branch" = "HEAD" ]; then
+        new_branch="main"
+      fi
+    fi
+
+    current_branch=$(git rev-parse --abbrev-ref HEAD)
+    if [ "$current_branch" != "$new_branch" ]; then
+      echo "🌿 Creating and switching to branch: $new_branch"
+      git checkout -b "$new_branch"
+    fi
+    branch="$new_branch"
 
     echo "📝 Commit message: \"$msg\""
     echo "📦 Remote: $remote"
@@ -174,7 +205,7 @@ case "$1" in
 
   stash-safe)
     echo "🔒 Trying to apply stash safety..."
-    if got stash apply --index; then 
+    if git stash apply --index; then
       git stash drop
       echo "✅ Stash applied and dropped."
     else
