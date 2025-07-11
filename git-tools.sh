@@ -136,6 +136,41 @@ case "$1" in
       branch="${args[2]}"
     fi
 
+      #* Detect if the repo has been just initialized (no commits and/or no remote)
+    if [ ! -d .git ]; then
+      echo "❌ Not a Git repository. Run 'git init' first."
+      exit 1
+    fi
+
+    if ! git rev-parse HEAD >/dev/null 2>&1; then
+      echo "📁 Detected an empty Git repository (no commits yet)."
+
+      #* Check and prompt for Git user identity
+      git_user_name=$(git config user.name)
+      git_user_email=$(git config user.email)
+
+      if [ -z "$git_user_name" ]; then
+        read -p "👤 Git user.name not set. Enter your name: " input_name
+        git config user.name "$input_name"
+        echo "✅ user.name set to '$input_name'"
+      fi
+
+      if [ -z "$git_user_email" ]; then
+        read -p "📧 Git user.email not set. Enter your email: " input_email
+        git config user.email "$input_email"
+        echo "✅ user.email set to '$input_email'"
+      fi
+    fi
+
+    #* Check if remote is configured
+    remotes=($(git remote))
+    if [ ${#remotes[@]} -eq 0 ]; then
+      read -p "🔗 No remotes found. Enter remote repository URL (e.g., https://github.com/user/repo.git): " remote_url
+      git remote add origin "$remote_url"
+      echo "✅ Remote 'origin' added: $remote_url"
+    fi
+
+
     #* Auto-generate commit message if empty
     if [ -z "$msg" ]; then
       commit_count=$(git rev-list --count HEAD 2>/dev/null || echo 0)
