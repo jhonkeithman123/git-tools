@@ -2,6 +2,68 @@
 
 # Git Tools CLI by Keith
 
+#* Functions
+
+function configure_git_user() {
+  echo "🔧 Starting Git user setup..."
+
+  read -p "Enter your Git username: " username
+  read -p "Enter your Git email: " email
+  read -p "Enter your Git token: " token
+  echo ""
+
+  # Check if user.name and user.email are already set
+  existing_name=$(git config --global user.name)
+  existing_email=$(git config --global user.email)
+
+  if [[ -n "$existing_name" || -n "$existing_email" ]]; then
+    echo "Existing configuration found:"
+    echo "🧑‍💻 Username: $existing_name"
+    echo "📧 Email: $existing_email"
+    read -p "Do you want to overwrite it? (y/N): " overwrite
+
+    if [[ "$overwrite" =~ ^[Yy]$ ]]; then
+      git config --global user.name "$username"
+      git config --global user.email "$email"
+      echo "✅ Git global config updated."
+    else
+      echo "Would you like to create a local config instead?"
+      read -p "Enter path to your project (leave blank to skip): " project_path
+
+      if [[ -n "$project_path" && -d "$project_path" ]]; then
+        cd "$project_path"
+        git config user.name "$username"
+        git config user.email "$email"
+        echo "✅ Local Git config updated for $project_path."
+      else
+        echo "❌ Invalid project path. Skipping local config."
+      fi
+    fi
+  else
+    git config --global user.name "$username"
+    git config --global user.email "$email"
+    echo "✅ Git global config set."
+  fi
+
+  git config --global credential.helper store
+  read -p "Enter the Git repository URL (or leave blank to skip storing credentials): " repo_url
+
+  if [[ -n "$repo_url" ]]; then
+    echo "$repo_url" > ~/.git-credentials
+    echo "username=$username" >> ~/.git-credentials
+    echo "password=$token" >> ~/.git-credentials
+    echo "🔐 Credentials saved for $repo_url"
+
+  else
+    echo "username=$username" > ~/.git-credentials
+    echo "password=$token" >> ~/.git-credentials
+
+    echo "🔐 Credentials saved without a specific repository URL."
+  fi
+
+  echo "🔒 Credentials stored using 'store' helper."
+}
+
 case "$1" in
   list-commits)
     git log --oneline --graph --decorate --all --color
@@ -181,6 +243,10 @@ case "$1" in
       echo "❌ Stash could not be applied cleanly. Keeping it intact."
     fi
     ;;
+
+  configure-user)
+    configure_git_user
+    ;;
   
   sync)
     branch=$(git rev-parse --abbrev-ref HEAD)
@@ -217,6 +283,7 @@ case "$1" in
     echo "  git-tools squash <N>                                  # Interactively squash last N commits"
     echo "  git-tools commit-push \"msg\" <remote> <branch>  # Commit and push, auto-rebase if needed"
     echo "  git-tools {--h|-help} git <--all | help | (category 'add, commit, etc.') | --export | (leave blank)>"
+    echo "  git-tools configure-user                              # Configure Git user identity and credentials"
     ;;
 
   --h|-help)
