@@ -136,7 +136,7 @@ case "$1" in
       branch="${args[2]}"
     fi
 
-      #* Detect if the repo has been just initialized (no commits and/or no remote)
+        #* Detect if the repo has been just initialized (no commits and/or no remote)
     if [ ! -d .git ]; then
       echo "❌ Not a Git repository. Run 'git init' first."
       exit 1
@@ -145,7 +145,7 @@ case "$1" in
     if ! git rev-parse HEAD >/dev/null 2>&1; then
       echo "📁 Detected an empty Git repository (no commits yet)."
 
-      #* Check and prompt for Git user identity
+      #* Prompt for Git identity if not set
       git_user_name=$(git config user.name)
       git_user_email=$(git config user.email)
 
@@ -162,12 +162,36 @@ case "$1" in
       fi
     fi
 
-    #* Check if remote is configured
-    remotes=($(git remote))
-    if [ ${#remotes[@]} -eq 0 ]; then
-      read -p "🔗 No remotes found. Enter remote repository URL (e.g., https://github.com/user/repo.git): " remote_url
-      git remote add origin "$remote_url"
-      echo "✅ Remote 'origin' added: $remote_url"
+    #* Auto-detect or prompt for remote
+    if [ -z "$remote" ]; then
+      remotes=($(git remote))
+      if [ ${#remotes[@]} -eq 0 ]; then
+        read -p "📡 No remotes found. Enter a name for the new remote [default: origin]: " input_remote
+        remote="${input_remote:-origin}"
+
+        read -p "🔗 Enter the remote repository URL (e.g., https://github.com/user/repo.git): " remote_url
+        git remote add "$remote" "$remote_url"
+        echo "✅ Remote '$remote' added: $remote_url"
+      elif [ ${#remotes[@]} -gt 1 ]; then
+        echo "⚠️ Multiple remotes found: ${remotes[*]}"
+        read -p "👉 Enter remote name to use [default: ${remotes[0]}]: " selected_remote
+        remote="${selected_remote:-${remotes[0]}}"
+      else
+        remote="${remotes[0]}"
+      fi
+    fi
+
+    #* Auto-detect or prompt for branch
+    if [ -z "$branch" ]; then
+      branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+      if [ -z "$branch" ] || [ "$branch" == "HEAD" ]; then
+        read -p "🌿 No active branch found. Enter a name for your branch [default: main]: " input_branch
+        branch="${input_branch:-main}"
+        git checkout -b "$branch"
+        echo "✅ Switched to new branch '$branch'"
+      else
+        echo "🌿 Using current branch: $branch"
+      fi
     fi
 
 
