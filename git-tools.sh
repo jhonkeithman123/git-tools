@@ -256,6 +256,51 @@ case "$1" in
     fi
     ;;
 
+  clone)
+    read -p "🔗 Enter the Git repository URL to clone: " repo_url
+    if [[ -z "$repo_url" ]]; then
+      echo "❌ No URL provided. Aborting."
+      exit 1
+    fi
+
+    read -p "📁 Folder to clone into (leave blank for default): " folder_name
+    read -p "🌍 Rename remote from 'origin' to (leave blank to keep 'origin'): " new_remote
+    read -p "🌿 Rename default branch after cloning? (leave blank to keep current): " new_branch
+
+    # build clone command
+    if [[ -n "$folder_name" ]]; then
+       git clone "$repo_url" "$folder_name"
+      if ! cd "$folder_name"; then
+        echo "❌ Failed to enter folder '$folder_name'. Retrying with mkdir..."
+        mkdir -p "$folder_name"
+        cd "$folder_name" || { echo "❌ Still failed to cd into '$folder_name'. Exiting."; exit 1; }
+      fi
+    else
+      git clone "$repo_url"
+      repo_basename=$(basename -s .git "$repo_url")
+      if ! cd "$repo_basename"; then
+        echo "❌ Failed to enter folder '$repo_basename'. Retrying with mkdir..."
+        mkdir -p "$repo_basename"
+        cd "$repo_basename" || { echo "❌ Still failed to cd into '$repo_basename'. Exiting."; exit 1; }
+      fi
+    fi
+
+    if [[ -n "$new_remote" && "$new_remote" != "origin" ]]; then
+      git remote rename origin "$new_remote"
+      echo "✅ Remote renamed to '$new_remote'"
+    else
+      echo "ℹ️ Keeping default remote name: origin"
+    fi
+
+    if [[ -n "$new_branch" ]]; then
+      current_branch=$(git rev-parse --abbrev-ref HEAD)
+      git branch -m "$current_branch" "$new_branch"
+      echo "✅ Branch renamed to '$new_branch'"
+    else
+      echo "ℹ️ Keeping current branch name."
+    fi
+    ;;
+
   stash-safe)
     echo "🔒 Trying to apply stash safety..."
     if git stash apply --index; then 
@@ -263,6 +308,151 @@ case "$1" in
       echo "✅ Stash applied and dropped."
     else
       echo "❌ Stash could not be applied cleanly. Keeping it intact."
+    fi
+    ;;
+
+  create-repo)
+    if ! command -v gh &>/dev/null; then
+      echo "❌ GitHub CLI (gh) not found. Attempting to install..."
+
+      if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        if command -v apt &>/dev/null; then
+          echo "🔧 Installing GitHub CLI via apt..."
+          type -p curl >/dev/null || sudo apt update && sudo apt install curl -y
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          sudo apt update
+          sudo apt install gh -y
+
+        elif command -v dnf &>/dev/null; then
+          echo "🔧 Installing Github CLI via dnf..."
+          sudo dnf install 'dnf-command(config-manager)' -y
+          sudo dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
+          sudo dnf install gh -y
+
+        elif command -v pacman &>/dev/null; then
+          echo "🔧 Installing GitHub CLI via pacman..."
+          sudo pacman -Syu && sudo pacman -Sy gh --noconfirm
+
+        else
+          echo "⚠️ Unsupported Linux package manager. Please install Github CLI manually from https://cli.github.com"
+          exit 1
+        fi
+      
+      elif [[ "$OSTYPE"  == "darwin"* ]]; then
+        if command -v brew &>/dev/null; then
+          echo "🔧 Installing GitHub CLI via HomeBrew..."
+          brew install gh
+        else
+          echo "⚠️ Homebrew not founf. Please install Homebrew first: https://brew.sh/"
+          exit 1
+        fi
+      
+      elif grep -qEi "(Microsoft|WSL)" /proc/version &>/dev/null; then
+        echo "🧰 Detected WSL. Installing GitHub CLI via apt..."
+        curl -fsSl https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+        sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/urs/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+        sudo apt update
+        sudo apt install gh -y
+
+      else
+        echo "⚠️ Unsupported OS. Please install GitHUb CLI manually from https://cli.github.com"
+        exit 1
+      fi
+
+      # Check again after installation
+      if ! command -v gh &>/dev/null; then
+        echo "❌ Failed to install GitHub CLI. Please install manually."
+        exit 1
+      else
+        echo "✅ GitHub CLI successfully installed!"
+        echo "Resuming repository creation"
+        read -p "press ENTER to continue:"
+      fi
+    fi
+
+    echo "📦 Let's create a GitHub repository interactively!"
+
+    # Ask for repo name
+    read -p "📛 Repository name (required): " repo_name
+    [[ -z "$repo_name" ]] && echp "❌ Repo name is required." && exit 1
+
+    # Ask for visibility
+    echo "🔐 Visibility options:"
+    echo "1) Public"
+    echo "2) Private"
+    echo "3) Internal (only for enterprise orgs)"
+    read -p "Select visibility [1/2/3]: " vis_choice
+    case "$vis_choice" in
+      2) visibility="--private" ;;
+      3) visibility="--visibility=internal" ;;
+      *) visibility="--public" ;;
+    esac
+
+    # Description (optional)
+    read -p "📝 Repository description (optional): " description
+    [[ -n "$description" ]] && description_flag="--description=\"$description\""
+
+    # Gitignore template
+    read -p "📄 Gitignore template (e.g., Node, Python) or leave blank: " gitignore
+    [[ -n "$gitignore" ]] && gitignore_flag="--gitignore=$gitignore"
+
+    # License template
+    read -p "📜 License template (e.g., mit, apache-2.0) or leave blank: " license
+    [[ -n "$license" ]] && license_flag="--license=$license"
+
+    # Create with remote?
+    read -p "🔗 Add remote? (y/n) [default: y]: " add_remote
+      
+    if [[ "$add_remote" =~ ^[Nn]$ ]]; then
+      remote_flag="--remote=none"
+    else
+      # Prompt for remote name only if user said yes or pressed Enter
+      read -p "🌍 Remote name [default: origin]: " remote_name
+      remote_name=${remote_name:-origin} # Use "origin" if blank
+      remote_flag="--remote=$remote_name"
+    fi
+
+    # Use current directory or new folder?
+    read -p "📁 Use current folder as repo source? (y/n) [default: y]: " use_current
+    [[ "$use_current" =~ ^[Nn]$ ]] && source_flag="" || source_flag="--source=."
+
+    # Confirm before running
+    echo
+    echo "⚙️ Ready to create repo with the following options:"
+    echo "- Name: $repo_name"
+    echo "- Visibility: $visibility"
+    [[ -n "$description" ]] && echo "-  Description: $description"
+    [[ -n "$gitignore" ]] && echo "-  Gitignore: $gitignore"
+    [[ -n "$license" ]] && echo "-  License: $license"
+    echo "- Remote: $remote_flag"
+    echo "- Source: $([[ "$use_current" =~ ^[Nn]$ ]] && echo 'New folder' || echo 'Current directory')"
+    echo
+    read -p "✅ Proceed with creation? (y/n): " confirm
+    [[ "$confirm" =~ ^[Nn]$ ]] && echo "❌ Cancelled." && exit 0
+
+    # Build command
+    echo "🚀 Creating repository on GitHub..."
+    eval gh repo create \"$repo_name\" $visibility $description_flag $gitignore_flag $license_flag $remote_flag $source_flag
+
+    # Optional push after
+    read -p "🚚 Push code to GitHub now? (y/n): " push_now
+    if [[ "$push_now" =~ ^[Yy]$ ]]; then
+      current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+
+      if [[ -z "$current_branch" || "$current_branch" == "HEAD" ]]; then
+        echo "❌ No current branch found. You might not be inside a Git repo or haven't made a commmit yet."
+        exit 1
+      fi
+
+      current_remote=$(git remote | head -n 1)
+      if [[ -z "$current_remote" ]]; then
+        echo "❌ No remote configured. Skipping push."
+      else
+        git push -u "$current_remote" "$current_branch"
+      fi
     fi
     ;;
 
@@ -295,17 +485,18 @@ case "$1" in
   help|--help|-h)
     echo "🛠️ Git Tools CLI"
     echo "Usage:"
+    echo "  git-tools clone                                       # Cloning a repository with interactive process."
+    echo "  git-tools commit-push[:msg] [--dry-run] [--confirm] [--verbose] [<remote>] [<branch>]  # Commit and push, auto-rebase on conflicts"
+    echo "  git-tools configure-user                              # Configure Git user identity and credentials"
+    echo "  git-tools create-repo                                 # Create a repository in Github using GitHub CLI"
+    echo "  git-tools current-branch                              # Show current Git branch"
+    echo "  git-tools {--h|-help} git <--all | help | (category 'add, commit, etc.') | --export | (leave blank)>"
     echo "  git-tools list-commits                                # Show recent commits in one-line format"
     echo "  git-tools prev-commit                                 # Soft reset to previous commit"
-    echo "  git-tools undo-last-commit                            # Undo last commit but keep changes staged"
-    echo "  git-tools current-branch                              # Show current Git branch"
-    echo "  git-tools commit-push \"message\" <remote> <branch>   # Add, commit, and push in one step"
+    echo "  git-tools squash <N>                                  # Interactively squash last N commits"
     echo "  git-tools stash-safe                                  # Apply stash only if clean, then drop"
     echo "  git-tools sync                                        # Pull and rebase from origin/<current-branch>"
-    echo "  git-tools squash <N>                                  # Interactively squash last N commits"
-    echo "  git-tools commit-push[:msg] [--dry-run] [--confirm] [--verbose] [<remote>] [<branch>]  # Commit and push, auto-rebase on conflicts"
-    echo "  git-tools {--h|-help} git <--all | help | (category 'add, commit, etc.') | --export | (leave blank)>"
-    echo "  git-tools configure-user                              # Configure Git user identity and credentials"
+    echo "  git-tools undo-last-commit                            # Undo last commit but keep changes staged"
     echo "  git-tools --version                                   # Show version of Git Tools CLI"
     ;;
 
