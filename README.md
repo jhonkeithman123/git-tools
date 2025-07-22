@@ -57,6 +57,10 @@ This is a custom Bash script providing a command-line interface (CLI) to streaml
         
 -    *Stages, commits, and pushes changes in one step with support for dry-run, confirmation, and verbose output. You can also leave the commands after commit-push empty if you are really lazy.*
 
+-   *Example:*
+    
+    git-tools commit-push:""
+
 
     git-tools stash-safe
 
