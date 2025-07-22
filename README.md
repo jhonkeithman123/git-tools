@@ -146,6 +146,64 @@ git-tools stash-safe
 -    *Compatible with WSL, macOS, and Linux.*
 
 
+## 🧰 Installation & Usage in Bash
+
+To make git-tools (and other custom CLI scripts) available globally in your terminal, follow these steps:
+
+### 📁 Step 1: Create a directory for your CLI tools
+
+-   *If you haven’t already:*
+
+```bash
+mkdir -p ~/scripts/bin
+```
+
+-   *You can place git-tools and other custom scripts inside this bin directory.*
+
+### 📄 Step 2: Move the script
+
+-   *Copy or move your git-tools Bash script to the folder:*
+
+```bash
+cp git-tools ~/scripts/bin/
+```
+
+-   *Make sure it's executable:*
+
+```bash
+chmod +x ~/scripts/bin/git-tools
+```
+
+### 🛠️ Step 3: Add the folder to your PATH
+
+-   *Open your ~/.bashrc (or ~/.bash_profile on macOS) with your preferred editor:*
+
+```bash
+nano ~/.bashrc
+```
+
+-   *Then add the following line at the bottom:*
+
+```bash
+export PATH="$HOME/scripts/bin:$PATH"
+```
+
+-   *press CTRL + O and CTRL + X to save and exit the nano.*
+
+-   *Finally, Reload the bash terminal:*
+
+```bash
+source ~/.bashrc (or ~/.bash_profile if you are on a macOS.)
+```
+
+### ✅ Step 4: Run it from anywhere
+
+-   *Now you can run git-tools from any terminal session like a normal command:*
+
+```bash
+git-tools help
+```
+
 ## 🛠️ Author
 
 -   *Keith Justine Virgenes*
