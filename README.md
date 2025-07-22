@@ -204,8 +204,11 @@ source ~/.bashrc (or ~/.bash_profile if you are on a macOS.)
 -   *Now you can run git-tools from any terminal session like a normal command:*
 
 ```bash
-git-tools help
+git-tools --version
 ```
+
+-   *It should output this: Git Tools CLI version $VERSION*
+-   *Made by jhonkeithman123*
 
 ## 🛠️ Author
 

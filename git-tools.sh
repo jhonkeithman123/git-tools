@@ -69,6 +69,7 @@ function configure_git_user() {
 case "$1" in
   --version)
     echo "Git Tools CLI version $VERSION"
+    echo "Made by jhonkeithman123"
     exit 0
     ;;
   list-commits)
