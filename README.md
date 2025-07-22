@@ -24,14 +24,16 @@ This is a custom Bash script providing a command-line interface (CLI) to streaml
 
 ## 📖 Commands
 
-- ### General
+-   ### General
 
     -   git-tools help
+
     -   git-tools --help
+
     -   git-tools -h
         - *Displays all available commands.*
 
-- ### Git Utilities
+### Git Utilities
 
     git-tools list-commits
         - *Show recent commits in graphs view.*
