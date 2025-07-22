@@ -7,19 +7,19 @@ This is a custom Bash script providing a command-line interface (CLI) to streaml
 
 ## 📦 Features
 
---    *Configure Git username, email, and store credentials*
+-   *Configure Git username, email, and store credentials*
 
---    *Commit and push changes with auto-branch/remote detection*
+-   *Commit and push changes with auto-branch/remote detection*
 
---    *Interactive commit squashing*
+-   *Interactive commit squashing*
 
---    *Safe stash apply*
+-   *Safe stash apply*
 
---    *Git command help and documentation export*
+-   *Git command help and documentation export*
 
---    *Auto-generated commit messages and branch creation*
+-   *Auto-generated commit messages and branch creation*
 
---    *Rebase and retry logic for push conflicts*
+-   *Rebase and retry logic for push conflicts*
 
 
 ## 📖 Commands
