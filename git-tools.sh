@@ -1,5 +1,7 @@
 #!/bin/bash
 
+VERSION="1.0.0"
+
 # Git Tools CLI by Keith
 
 #* Functions
@@ -65,6 +67,10 @@ function configure_git_user() {
 }
 
 case "$1" in
+  --version)
+    echo "Git Tools CLI version $VERSION"
+    exit 0
+    ;;
   list-commits)
     git log --oneline --graph --decorate --all --color
     ;;
@@ -299,6 +305,7 @@ case "$1" in
     echo "  git-tools commit-push[:msg] [--dry-run] [--confirm] [--verbose] [<remote>] [<branch>]  # Commit and push, auto-rebase on conflicts"
     echo "  git-tools {--h|-help} git <--all | help | (category 'add, commit, etc.') | --export | (leave blank)>"
     echo "  git-tools configure-user                              # Configure Git user identity and credentials"
+    echo "  git-tools --version                                   # Show version of Git Tools CLI"
     ;;
 
   --h|-help)
