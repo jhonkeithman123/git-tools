@@ -7,19 +7,19 @@ This is a custom Bash script providing a command-line interface (CLI) to streaml
 
 ## 📦 Features
 
--    *Configure Git username, email, and store credentials*
+--    *Configure Git username, email, and store credentials*
 
--    *Commit and push changes with auto-branch/remote detection*
+--    *Commit and push changes with auto-branch/remote detection*
 
--    *Interactive commit squashing*
+--    *Interactive commit squashing*
 
--    *Safe stash apply*
+--    *Safe stash apply*
 
--    *Git command help and documentation export*
+--    *Git command help and documentation export*
 
--    *Auto-generated commit messages and branch creation*
+--    *Auto-generated commit messages and branch creation*
 
--    *Rebase and retry logic for push conflicts*
+--    *Rebase and retry logic for push conflicts*
 
 
 ## 📖 Commands
@@ -36,42 +36,42 @@ This is a custom Bash script providing a command-line interface (CLI) to streaml
 
 - ### Git Utilities
 
--   git-tools list-commits
--       *Show recent commits in graphs view.*
+    - git-tools list-commits
+        *Show recent commits in graphs view.*
 
--    git-tools prev-commit
+    - git-tools prev-commit
 
--    git-tools undo-last-commit
--        *Soft reset to the previous commit.*
+    - git-tools undo-last-commit
+        *Soft reset to the previous commit.*
 
--    git-tools current-branch
--        *show the current branch name.*
+    - git-tools current-branch
+        *show the current branch name.*
 
--   git-tools commit-push [:message] [<remote>] [<branch>] [--dry-run] [--confirm] [--verbose]
--       *Stages, commits, and pushes changes in one step with support for dry-run, confirmation, and verbose output. You can also leave the commands after commit-push empty if you are really lazy.*
+    - git-tools commit-push [:message] [<remote>] [<branch>] [--dry-run] [--confirm] [--verbose]
+        *Stages, commits, and pushes changes in one step with support for dry-run, confirmation, and verbose output. You can also leave the commands after commit-push empty if you are really lazy.*
 
--    git-tools stash-safe
--        *Applies stash only if cleanly applicable; drops stash if successful.*
+    - git-tools stash-safe
+        *Applies stash only if cleanly applicable; drops stash if successful.*
 
--    git-tools sync
--        *Rebase-pulss from current branch and remote.*
+    - git-tools sync
+        *Rebase-pulss from current branch and remote.*
 
--    git-tools squash <N>
--        *Interactively squash last N commits.*
+    - git-tools squash <N>
+        *Interactively squash last N commits.*
 
--    git-tools configure-user
--        *Prompts for Git username, email, and token, with global or local config options.*
+    - git-tools configure-user
+        *Prompts for Git username, email, and token, with global or local config options.*
 
 
 ## 📘 Git Help System
 
--   git-tools --h git
+    - git-tools --h git
 
--   git-tools --h git <category>
+    - git-tools --h git <category>
 
--   git-tools --h git --all
+    - git-tools --h git --all
 
--   git-tools --h git --export
+    - git-tools --h git --export
 
 
 ### Categories:
