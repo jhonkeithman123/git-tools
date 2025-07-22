@@ -24,7 +24,7 @@ This is a custom Bash script providing a command-line interface (CLI) to streaml
 
 ## 📖 Commands
 
--   ### General
+### General
 
     -   git-tools help
 
