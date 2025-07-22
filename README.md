@@ -4,7 +4,7 @@
 
 This is a custom Bash script providing a command-line interface (CLI) to streamline common Git operations. It includes features such as committing and pushing changes, user configuration, syncing, interactive squash, and educational Git command help.
 
-See the [instruction on how to use it in terminal here](#-installation--usage-in-bash). 
+See the instruction on how to use it in terminal [here](#-installation--usage-in-bash). 
 
 
 ## 📦 Features
