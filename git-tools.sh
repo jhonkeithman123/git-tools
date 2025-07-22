@@ -83,35 +83,66 @@ case "$1" in
     git rev-parse --abbrev-ref HEAD
     ;;
 
-  commit-push)
-    #* Flag parsing
-    dry_run=false
-    confirm=false
-    verbose=false
+  commit-push*)
+    # 1) Extract built-in message if caller used commit-push:Your message
+    if [[ "$1" == commit-push:* ]]; then
+      preset_msg="${1#commit-push:}"
+    else
+      preset_msg=""
+    fi
+    shift  # Drop the commit-push token
 
-    for arg in "$@"; do
-      case "$arg" in
-        --dry-run) dry_run=true ;;
-        --confirm) confirm=true ;;
-        --verbose) verbose=true ;;
+    # 2) Parse flags
+    dry_run=false; confirm=false; verbose=false
+    for a in "$@"; do
+      case "$a" in
+        --dry-run)  dry_run=true  ;;
+        --confirm)  confirm=true  ;;
+        --verbose)  verbose=true  ;;
       esac
     done
 
-    #* Remove flags from args
-    args=()
-    for arg in "$@"; do
-      [[ "$arg" != "--dry-run" && "$arg" != "--confirm" && "$arg" != "--verbose" ]] && args+=("$arg")
+    # 3) Remove flags from positional args
+    positional=()
+    for a in "$@"; do
+      [[ "$a" != "--dry-run" && "$a" != "--confirm" && "$a" != "--verbose" ]] && positional+=("$a")
     done
 
-    #* Ordinal suffix generator
+    # 4) Load existing remotes and branches
+    mapfile -t remotes  < <(git remote)
+    mapfile -t branches < <(git branch --format='%(refname:short)')
+
+    msg=""; remote=""; branch=""
+
+    # 5) Identify each positional argument
+    for a in "${positional[@]}"; do
+      if [[ -z "$msg" && ( "$a" =~ ^\".*\"$ || "$a" =~ [[:space:]] ) ]]; then
+        # Quoted string or contains space → commit message
+        msg="${a%\"}"  
+        msg="${msg#\"}"
+      elif [[ -z "$remote" && " ${remotes[*]} " == *" $a "* ]]; then
+        # Matches a remote name
+        remote="$a"
+      elif [[ -z "$branch" && " ${branches[*]} " == *" $a "* ]]; then
+        # Matches a branch name
+        branch="$a"
+      elif [[ -z "$msg" ]]; then
+        # Fallback: first unassigned → message
+        msg="$a"
+      fi
+    done
+
+    # 6) If no msg from positionals but preset exists, use it
+    [[ -z "$msg" && -n "$preset_msg" ]] && msg="$preset_msg"
+
+    # 7) Ordinal suffix helper
     ordinal_suffix() {
       n=$1
-      if [[ $n -eq 0 ]]; then echo "initial"; return; fi
-      last_digit=$((n % 10))
+      if (( n == 0 )); then echo "initial"; return; fi
       last_two=$((n % 100))
-      if [[ $last_two -ge 11 && $last_two -le 13 ]]; then suffix="th"
+      if (( last_two >= 11 && last_two <= 13 )); then suffix="th"
       else
-        case $last_digit in
+        case $((n % 10)) in
           1) suffix="st" ;;
           2) suffix="nd" ;;
           3) suffix="rd" ;;
@@ -121,181 +152,106 @@ case "$1" in
       echo "${n}${suffix}"
     }
 
-    #* Parse args and auto-generate commit message if needed
-    if [ ${#args[@]} -eq 1 ]; then
-      msg="${args[0]}"
-      remote=""
-      branch=""
-    elif [ ${#args[@]} -eq 2 ]; then
-      msg=""
-      remote="${args[0]}"
-      branch="${args[1]}"
-    elif [ ${#args[@]} -ge 3 ]; then
-      msg="${args[0]}"
-      remote="${args[1]}"
-      branch="${args[2]}"
-    fi
-
-        #* Detect if the repo has been just initialized (no commits and/or no remote)
+    # 8) Ensure we're in a Git repo
     if [ ! -d .git ]; then
       echo "❌ Not a Git repository. Run 'git init' first."
       exit 1
     fi
 
+    # 9) Handle empty repo (no commits yet)
     if ! git rev-parse HEAD >/dev/null 2>&1; then
-      echo "📁 Detected an empty Git repository (no commits yet)."
-
-      #* Prompt for Git identity if not set
+      echo "📁 Empty repository detected."
       git_user_name=$(git config user.name)
       git_user_email=$(git config user.email)
-
       if [ -z "$git_user_name" ]; then
-        read -p "👤 Git user.name not set. Enter your name: " input_name
+        read -p "👤 Enter your name for Git: " input_name
         git config user.name "$input_name"
-        echo "✅ user.name set to '$input_name'"
       fi
-
       if [ -z "$git_user_email" ]; then
-        read -p "📧 Git user.email not set. Enter your email: " input_email
+        read -p "📧 Enter your email for Git: " input_email
         git config user.email "$input_email"
-        echo "✅ user.email set to '$input_email'"
       fi
     fi
 
-    #* Auto-detect or prompt for remote
+    # 10) Auto-detect or prompt for remote
     if [ -z "$remote" ]; then
-      remotes=($(git remote))
       if [ ${#remotes[@]} -eq 0 ]; then
-        read -p "📡 No remotes found. Enter a name for the new remote [default: origin]: " input_remote
-        remote="${input_remote:-origin}"
-
-        read -p "🔗 Enter the remote repository URL (e.g., https://github.com/user/repo.git): " remote_url
-        git remote add "$remote" "$remote_url"
-        echo "✅ Remote '$remote' added: $remote_url"
+        read -p "📡 No remotes. Name [default origin]: " input_r
+        remote="${input_r:-origin}"
+        read -p "🔗 Remote URL: " url
+        git remote add "$remote" "$url"
       elif [ ${#remotes[@]} -gt 1 ]; then
-        echo "⚠️ Multiple remotes found: ${remotes[*]}"
-        read -p "👉 Enter remote name to use [default: ${remotes[0]}]: " selected_remote
-        remote="${selected_remote:-${remotes[0]}}"
+        echo "⚠️ Multiple remotes: ${remotes[*]}"
+        read -p "👉 Choose remote [default ${remotes[0]}]: " sel
+        remote="${sel:-${remotes[0]}}"
       else
         remote="${remotes[0]}"
       fi
     fi
 
-    #* Auto-detect or prompt for branch
+    # 11) Auto-detect or prompt for branch
     if [ -z "$branch" ]; then
-      branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
-      if [ -z "$branch" ] || [ "$branch" == "HEAD" ]; then
-        read -p "🌿 No active branch found. Enter a name for your branch [default: main]: " input_branch
-        branch="${input_branch:-main}"
+      current=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+      if [ -z "$current" ] || [ "$current" == "HEAD" ]; then
+        read -p "🌿 No branch. Name [default main]: " input_b
+        branch="${input_b:-main}"
         git checkout -b "$branch"
-        echo "✅ Switched to new branch '$branch'"
       else
-        echo "🌿 Using current branch: $branch"
+        branch="$current"
       fi
     fi
 
-
-    #* Auto-generate commit message if empty
+    # 12) Auto-generate commit message if empty
     if [ -z "$msg" ]; then
-      commit_count=$(git rev-list --count HEAD 2>/dev/null || echo 0)
-      ordinal=$(ordinal_suffix "$commit_count")
-      if [ "$commit_count" -eq 0 ]; then
-        msg="no commits made: initial commit"
+      count=$(git rev-list --count HEAD 2>/dev/null || echo 0)
+      ord=$(ordinal_suffix "$count")
+      if (( count == 0 )); then
+        msg="initial commit"
       else
-        msg="$commit_count commits made: ${ordinal} commit"
+        msg="$count commits made: ${ord} commit"
       fi
     fi
 
-    #* Auto-detect remote
-    if [ -z "$remote" ]; then
-      remotes=($(git remote))
-      if [ ${#remotes[@]} -eq 0 ]; then
-        echo "❌ No remotes found. Are you in a Git repo?"
-        exit 1
-      elif [ ${#remotes[@]} -gt 1 ]; then
-        echo "⚠️ Multiple remotes found: ${remotes[*]}"
-        echo "👉 Defaulting to: ${remotes[0]}"
-      fi
-      remote="${remotes[0]}"
-    fi
-
-    #* Auto-detect branch
-    if [ -z "$branch" ]; then
-      branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
-      if [ -z "$branch" ]; then
-        echo "❌ Could not detect current branch."
-        exit 1
-      fi
-      echo "🌿 Using current branch: $branch"
-    fi
-
+    # 13) Show summary
     echo "📝 Commit message: \"$msg\""
-    echo "📦 Remote: $remote"
-    echo "🌿 Branch: $branch"
+    echo "📦 Remote:        $remote"
+    echo "🌿 Branch:        $branch"
+    $dry_run && { echo "🔍 Dry run – exiting."; exit 0; }
 
-    if $dry_run; then
-      echo "🔍 Dry run mode: no changes will be made."
-      exit 0
-    fi
-
+    # 14) Stage, commit, and optionally show diff
     git add .
-
-    if $verbose; then
-      echo "🔍 Showing staged changes:"
-      git diff --staged
-      echo
-    fi
-
+    $verbose && { echo "🔍 Staged changes:"; git diff --staged; echo; }
     git commit -m "$msg"
 
+    # 15) Confirm before push if requested
     if $confirm; then
       while true; do
-        echo
-        echo "❓ Confirm push to remote: '$remote' on branch: '$branch'"
-        echo "   [y] Yes, push"
-        echo "   [r] Show remotes"
-        echo "   [b] Show branches"
-        echo "   [n] No, cancel"
-        read -p "👉 Your choice [y/r/b/n]: " choice
-
+        read -p "❓ Push to $remote/$branch? [y/n/r/b]: " choice
         case "$choice" in
           [Yy]) break ;;
-          [Rr])
-            echo "📡 Available remotes:"
-            git remote -v
-            ;;
-          [Bb])
-            echo "🌿 Available branches:"
-            git branch -a
-            ;;
-          [Nn])
-            echo "❌ Push cancelled."
-            exit 0
-            ;;
-          *)
-            echo "⚠️ Invalid choice. Please enter y, r, b, or n."
-            ;;
+          [Nn]) echo "❌ Push cancelled."; exit 0 ;;
+          [Rr]) git remote -v ;;
+          [Bb]) git branch -a ;;
+          *) echo "⚠️ Enter y, n, r, or b." ;;
         esac
       done
     fi
 
+    # 16) Push and handle rebase on failure
     echo "🚀 Pushing to $remote/$branch..."
     if git push "$remote" "$branch"; then
       echo "✅ Push successful."
     else
-      echo "⚠️ Push failed. Attempting to rebase and retry..."
-      git pull --rebase "$remote" "$branch"
-      if git push "$remote" "$branch"; then
-        echo "✅ Push successful after rebase."
-      else
-        echo "❌ Push still failed. Please resolve conflicts manually."
-      fi
+      echo "⚠️ Push failed. Rebasing and retrying..."
+      git pull --rebase "$remote" "$branch" && git push "$remote" "$branch" \
+        && echo "✅ Push successful after rebase." \
+        || echo "❌ Still failed. Resolve conflicts manually."
     fi
     ;;
 
   stash-safe)
     echo "🔒 Trying to apply stash safety..."
-    if got stash apply --index; then 
+    if git stash apply --index; then 
       git stash drop
       echo "✅ Stash applied and dropped."
     else
@@ -340,7 +296,7 @@ case "$1" in
     echo "  git-tools stash-safe                                  # Apply stash only if clean, then drop"
     echo "  git-tools sync                                        # Pull and rebase from origin/<current-branch>"
     echo "  git-tools squash <N>                                  # Interactively squash last N commits"
-    echo "  git-tools commit-push \"msg\" <remote> <branch>  # Commit and push, auto-rebase if needed"
+    echo "  git-tools commit-push[:msg] [--dry-run] [--confirm] [--verbose] [<remote>] [<branch>]  # Commit and push, auto-rebase on conflicts"
     echo "  git-tools {--h|-help} git <--all | help | (category 'add, commit, etc.') | --export | (leave blank)>"
     echo "  git-tools configure-user                              # Configure Git user identity and credentials"
     ;;
