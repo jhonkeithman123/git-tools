@@ -31,7 +31,8 @@ This is a custom Bash script providing a command-line interface (CLI) to streaml
     -   git-tools --help
 
     -   git-tools -h
-        - *Displays all available commands.*
+
+-    *Displays all available commands.*
 
 ### Git Utilities
 
