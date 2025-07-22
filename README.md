@@ -37,33 +37,43 @@ This is a custom Bash script providing a command-line interface (CLI) to streaml
 ### Git Utilities
 
     git-tools list-commits
+
     
 -    *Show recent commits in graphs view.*
 
 
     git-tools prev-commit
 
+
     git-tools undo-last-commit
+
 
 -    *Soft reset to the previous commit.*
 
 
     git-tools current-branch
 
+
 -    *show the current branch name.*
 
 
     git-tools commit-push [:message] [<remote>] [<branch>] [--dry-run] [--confirm] [--verbose]
-        
+
+
 -    *Stages, commits, and pushes changes in one step with support for dry-run, confirmation, and verbose output. You can also leave the commands after commit-push empty if you are really lazy.*
 
+
 -   *Example:*
-    
+
+
     git-tools commit-push:"Your Message" origin main --dry-run --no-confirm --verbose
+
 
 -   *Or*
 
+
     git-tools commit-push
+
 
 -   *You can also use it like this if you are really lazy, just remember that it will automatically create a commit message depending on how many commit you have made and if you there are no remote name exist, it will prompt you to type a name of remote, if you enter without entering anything, it will default to origin, the same as branch name, it will default to main if you just entered.*
 
