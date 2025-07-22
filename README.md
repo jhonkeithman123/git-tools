@@ -36,30 +36,38 @@ This is a custom Bash script providing a command-line interface (CLI) to streaml
 ### Git Utilities
 
     git-tools list-commits
-        - *Show recent commits in graphs view.*
+    
+-    *Show recent commits in graphs view.*
 
     git-tools prev-commit
 
     git-tools undo-last-commit
-        - *Soft reset to the previous commit.*
+
+-    *Soft reset to the previous commit.*
 
     git-tools current-branch
-        - *show the current branch name.*
+
+-    *show the current branch name.*
 
     git-tools commit-push [:message] [<remote>] [<branch>] [--dry-run] [--confirm] [--verbose]
-        - *Stages, commits, and pushes changes in one step with support for dry-run, confirmation, and verbose output. You can also leave the commands after commit-push empty if you are really lazy.*
+        
+-    *Stages, commits, and pushes changes in one step with support for dry-run, confirmation, and verbose output. You can also leave the commands after commit-push empty if you are really lazy.*
 
     git-tools stash-safe
-        - *Applies stash only if cleanly applicable; drops stash if successful.*
+
+-    *Applies stash only if cleanly applicable; drops stash if successful.*
 
     git-tools sync
-        - *Rebase-pulss from current branch and remote.*
+
+-    *Rebase-pulss from current branch and remote.*
 
     git-tools squash <N>
-        - *Interactively squash last N commits.*
+
+-    *Interactively squash last N commits.*
 
     git-tools configure-user
-        - *Prompts for Git username, email, and token, with global or local config options.*
+    
+-    *Prompts for Git username, email, and token, with global or local config options.*
 
 
 ## 📘 Git Help System
