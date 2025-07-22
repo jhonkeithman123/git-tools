@@ -77,9 +77,9 @@ git-tools commit-push
 
 -   *You can also use it like this if you are really lazy, just remember that it will automatically create a commit message depending on how many commit you have made and if you there are no remote name exist, it will prompt you to type a name of remote, if you enter without entering anything, it will default to origin, the same as branch name, it will default to main if you just entered.*
 
-
+```bash
     git-tools stash-safe
-
+```
 -    *Applies stash only if cleanly applicable; drops stash if successful.*
 
 
